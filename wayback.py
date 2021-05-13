@@ -1,96 +1,43 @@
-# Example usage:
-# def download(url):
-#   # download logic
-#   return html
-
-# def parse(html):
-#   # parse logic
-#   # print parsed infomation, print errors
-
-# URL = "https://www.google.com/"
-# wayback(URL, download, parse, 5, hide_snapshot_url_on_success=True)
-
-
-def wayback(url, download_function, parse_function, amount_of_snapshots=10,
-            hide_snapshot_url_on_success=False):
-    # Expects download function to take one parameter (url) and return HTML
-    # in a format that the parse function handles,
-    # and the parse function to return True for a correct parse
-    # and return False for an incorrect parse
-    #
-    # Amount of snapshots is the amount of snapshots to test before stopping
-    #
-    # If extra parameters are needed for the download function,
-    # wrap the download function (with needed parameters) in another function,
-    # then pass that new function into wayback
+def wayback(url, download_function, parse_function, search_snapshot_limit=10):
+    # Expects download_function(url)
+    # Expects parse_function(html)
+    # Expects parse_function to return True on a successful parse
+    # Expects parse_function to return False on a failed parse
     import json
-    from datetime import datetime, timedelta
+    from datetime import datetime
+
     TIMESTAMP_FORMAT = "%Y%m%d%H%M%S"
-    SEARCH_TIME_GAP = timedelta(days=1)
+    CDX_API_URL = ("http://web.archive.org/cdx/search/cdx?"
+                   "url={url}&output=json&fl=timestamp,digest&limit=-{limit}")
+    SNAPSHOT_URL = "http://web.archive.org/web/{timestamp}id_/{url}"
 
-    snapshot_count = 0
-    previous_snapshot_datetime = None
-    search_snapshot_datetime = datetime.now()
-    search_snapshot_timestamp = search_snapshot_datetime.strftime(
-        TIMESTAMP_FORMAT)
-    while snapshot_count < amount_of_snapshots:
-        # Find closest avaliable webpage archive to the date
-        # https://archive.org/help/wayback_api.php
-        print("Searching for the closest snapshot to",
-              search_snapshot_datetime)
-        wayback_api_html = download_function(
-            "http://archive.org/wayback/available?url={}&timestamp={}".format(
-                url, search_snapshot_timestamp))
+    # search for unique snapshots
+    search_url = CDX_API_URL.format(url=url, limit=search_snapshot_limit)
+    search_json = download_function(search_url)
+    snapshots = json.loads(search_json)
+    snapshots.pop(0)  # remove cdx format line
+    previous_digest = None
+    snapshot_timestamps = []
+    for snapshot in snapshots:
+        timestamp = snapshot[0]
+        digest = snapshot[1]
+        # skip download if identical to previous snapshot
+        if digest == previous_digest:
+            continue
+        snapshot_timestamps.append(timestamp)
+        previous_digest = digest
+    print("Found", len(snapshot_timestamps), "unique snapshots")
 
-        wayback_snapshots = json.loads(wayback_api_html)["archived_snapshots"]
-        # Contains empty dict if a snapshot is not avaliable
-        if wayback_snapshots:
-            # Only the closest snapshot to the requested date is returned
-            snapshot = wayback_snapshots["closest"]
-            snapshot_timestamp = snapshot["timestamp"]
-            snapshot_datetime = datetime.strptime(
-                snapshot_timestamp,
-                TIMESTAMP_FORMAT)
-
-            # todo: too many skips will probably get user banned.
-            #       increase search time gap incrementally
-            #       and pause every so often
-            if (snapshot_datetime == previous_snapshot_datetime):
-                print("Already downloaded snapshot at {}. Skipping".format(
-                    snapshot_datetime
-                ))
-                continue
-
-            # URL might be different to what wayback expects?
-            #
-            # Page returned is "rendered exactly as it was archived"
-            # https://webapps.stackexchange.com/a/40912
-            print(f"Found snapshot at {snapshot_datetime}. Downloading...")
-            if not hide_snapshot_url_on_success:
-                print("Snapshot link:",
-                      "http://web.archive.org/web/{}/{}".format(
-                          snapshot_timestamp, url))
-            # todo: cache downloaded pages.
-            #       warning - might be similar to export functionality?
-            snapshot_html = download_function(
-                f"http://web.archive.org/web/{snapshot_timestamp}id_/{url}")
-            # todo: expect and handle parse function's dictonary or bool return
-            parse_result = parse_function(snapshot_html)
-            if parse_result:
-                print("Parse was successful!")
-            else:
-                if hide_snapshot_url_on_success:
-                    print("Parse failed. Snapshot link:",
-                          "http://web.archive.org/web/{}/{}".format(
-                              snapshot_timestamp, url))
-                else:
-                    print("Parse failed")
-
-            previous_snapshot_datetime = snapshot_datetime
-            search_snapshot_datetime = snapshot_datetime - SEARCH_TIME_GAP
-            search_snapshot_timestamp = search_snapshot_datetime.strftime(
-                TIMESTAMP_FORMAT)
-            snapshot_count += 1
+    # download and test snapshots
+    for timestamp in snapshot_timestamps:
+        timestamp_readable = datetime.strptime(timestamp, TIMESTAMP_FORMAT)
+        print("Downloading snapshot from", timestamp_readable)
+        snapshot_url = SNAPSHOT_URL.format(timestamp=timestamp, url=url)
+        snapshot_html = download_function(snapshot_url)
+        parse_result = parse_function(snapshot_html)
+        if parse_result:
+            print("Parsed successfully!")
         else:
-            print("No snapshots were found")
-            return
+            print("Parse failed. Saving locally as", timestamp + ".html")
+            with open(timestamp + ".html", 'w') as f:
+                f.write(snapshot_html)
