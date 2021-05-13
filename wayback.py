@@ -1,43 +1,91 @@
-def wayback(url, download_function, parse_function, search_snapshot_limit=10):
+def wayback(sources, download_function, parse_function):
+    # Expects sources as a dictonary in form of:
+    # {
+    #     "source_name": {
+    #         "url": "http://...",
+    #         "snapshot_search_limit": 10
+    #     }
+    # }
+    # The value to key snapshot_search_limit controls the amount of snapshots
+    # searched for with the wayback api. The amount of snapshots searched for
+    # may not equal the amount of snapshots downloaded as non-unique snapshots
+    # are rejected
+    # The value to key snapshot_search_limit has to be greater or equal to 0
+    #
+    # Set the value to key snapshot_search_limit to 0 to skip the
+    # snapshot search and use only cached web-pages
+    #
     # Expects download_function(url)
     # Expects parse_function(html)
     # Expects parse_function to return True on a successful parse
     # Expects parse_function to return False on a failed parse
     import json
     from datetime import datetime
+    import os
+    import re
 
+    CACHE_LOCATION = "snapshot_cache"
+    CACHE_REGEX = re.compile(r"^(\d{14})\.html$")
     TIMESTAMP_FORMAT = "%Y%m%d%H%M%S"
     CDX_API_URL = ("http://web.archive.org/cdx/search/cdx?"
                    "url={url}&output=json&fl=timestamp,digest&limit=-{limit}")
     SNAPSHOT_URL = "http://web.archive.org/web/{timestamp}id_/{url}"
 
-    # search for unique snapshots
-    search_url = CDX_API_URL.format(url=url, limit=search_snapshot_limit)
-    search_json = download_function(search_url)
-    snapshots = json.loads(search_json)
-    snapshots.pop(0)  # remove cdx format line
-    previous_digest = None
-    snapshot_timestamps = []
-    for snapshot in snapshots:
-        timestamp = snapshot[0]
-        digest = snapshot[1]
-        # skip download if identical to previous snapshot
-        if digest == previous_digest:
-            continue
-        snapshot_timestamps.append(timestamp)
-        previous_digest = digest
-    print("Found", len(snapshot_timestamps), "unique snapshots")
-
-    # download and test snapshots
-    for timestamp in snapshot_timestamps:
-        timestamp_readable = datetime.strptime(timestamp, TIMESTAMP_FORMAT)
-        print("Downloading snapshot from", timestamp_readable)
-        snapshot_url = SNAPSHOT_URL.format(timestamp=timestamp, url=url)
-        snapshot_html = download_function(snapshot_url)
-        parse_result = parse_function(snapshot_html)
-        if parse_result:
-            print("Parsed successfully!")
+    for source_name, source_data in sources.items():
+        url = source_data["url"]
+        snapshot_search_limit = source_data["snapshot_search_limit"]
+        if snapshot_search_limit < 0:
+            print("Snapshot search limit is less than 0 for", source_name)
+            return
+        source_cache_dir = f"{CACHE_LOCATION}/{source_name}"
+        os.makedirs(source_cache_dir, exist_ok=True)
+        # search for unique snapshots
+        snapshot_timestamps = set()
+        if snapshot_search_limit:
+            search_url = CDX_API_URL.format(url=url,
+                                            limit=snapshot_search_limit)
+            search_json = download_function(search_url)
+            snapshots = json.loads(search_json)
+            snapshots.pop(0)  # remove cdx format line
+            previous_digest = None
+            # multiple snapshots can occur at a single timestamp
+            for snapshot in snapshots:
+                timestamp = snapshot[0]
+                digest = snapshot[1]
+                # skip download if identical to previous snapshot
+                if digest == previous_digest:
+                    continue
+                snapshot_timestamps.add(timestamp)
+                previous_digest = digest
+            print("Found", len(snapshot_timestamps),
+                  "unique snapshots for", source_name)
         else:
-            print("Parse failed. Saving locally as", timestamp + ".html")
-            with open(timestamp + ".html", 'w') as f:
-                f.write(snapshot_html)
+            cache_file_names = os.listdir(source_cache_dir)
+            for cache_file_name in cache_file_names:
+                match = CACHE_REGEX.match(cache_file_name)
+                if match:
+                    timestamp = match[1]
+                    snapshot_timestamps.add(timestamp)
+
+        # download, cache and test snapshots
+        for timestamp in snapshot_timestamps:
+            snapshot_location = f"{source_cache_dir}/{timestamp}.html"
+            timestamp_readable = datetime.strptime(timestamp, TIMESTAMP_FORMAT)
+            if os.path.isfile(snapshot_location):
+                print("Using cached snapshot from", timestamp_readable)
+                with open(snapshot_location) as f:
+                    snapshot_html = f.read()
+            else:
+                print("Downloading snapshot from", timestamp_readable)
+                snapshot_url = SNAPSHOT_URL.format(timestamp=timestamp,
+                                                   url=url)
+                snapshot_html = download_function(snapshot_url)
+                # cache snapshot
+                with open(snapshot_location, 'w') as f:
+                    f.write(snapshot_html)
+            # test snapshot
+            parse_result = parse_function(snapshot_html)
+            if parse_result:
+                print("Parsed successfully!")
+            else:
+                print("Parse failed.")
