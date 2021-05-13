@@ -1,24 +1,4 @@
-def wayback(sources, download_function, parse_function):
-    # Expects sources as a dictonary in form of:
-    # {
-    #     "source_name": {
-    #         "url": "http://...",
-    #         "snapshot_search_limit": 10
-    #     }
-    # }
-    # The value to key snapshot_search_limit controls the amount of snapshots
-    # searched for with the wayback api. The amount of snapshots searched for
-    # may not equal the amount of snapshots downloaded as non-unique snapshots
-    # are rejected
-    # The value to key snapshot_search_limit has to be greater or equal to 0
-    #
-    # Set the value to key snapshot_search_limit to 0 to skip the
-    # snapshot search and use only cached web-pages
-    #
-    # Expects download_function(url)
-    # Expects parse_function(html)
-    # Expects parse_function to return True on a successful parse
-    # Expects parse_function to return False on a failed parse
+def wayback(sources, download_function):
     import json
     from datetime import datetime
     import os
@@ -34,6 +14,7 @@ def wayback(sources, download_function, parse_function):
     for source_name, source_data in sources.items():
         url = source_data["url"]
         snapshot_search_limit = source_data["snapshot_search_limit"]
+        parse_function = source_data["parse_function"]
         if snapshot_search_limit < 0:
             print("Snapshot search limit is less than 0 for", source_name)
             return
