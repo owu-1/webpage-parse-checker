@@ -1,7 +1,9 @@
 # webpage-parse-checker
 Generate robust parsing code for webpages
 
-<b>Warning - Remember to remove the function and the snapshot_cache folder for the submission</b>
+<b>Warning - A directory named snapshot_cache will be created in the current directory</b>
+
+<b>Warning - Remember to remove the function and the snapshot_cache folder for submission</b>
 ## How to use
 Copy and paste the wayback function into your solution, then call the function with source infomation and your download function
 
