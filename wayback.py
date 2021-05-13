@@ -11,6 +11,7 @@ def wayback(sources, download_function):
                    "url={url}&output=json&fl=timestamp,digest&limit=-{limit}")
     SNAPSHOT_URL = "http://web.archive.org/web/{timestamp}id_/{url}"
 
+    parse_fail_timestamps = {}
     for source_name, source_data in sources.items():
         url = source_data["url"]
         snapshot_search_limit = source_data["snapshot_search_limit"]
@@ -49,6 +50,8 @@ def wayback(sources, download_function):
                     snapshot_timestamps.add(timestamp)
 
         # download, cache and test snapshots
+        parse_fail_timestamps[source_name] = []
+        fails = parse_fail_timestamps[source_name]
         for timestamp in snapshot_timestamps:
             snapshot_location = f"{source_cache_dir}/{timestamp}.html"
             timestamp_readable = datetime.strptime(timestamp, TIMESTAMP_FORMAT)
@@ -70,3 +73,9 @@ def wayback(sources, download_function):
                 print("Parsed successfully!")
             else:
                 print("Parse failed.")
+                fails.append(timestamp)
+
+    for source_name, timestamps in parse_fail_timestamps.items():
+        print(source_name, "had", len(timestamps), "parse fails")
+        if timestamps:
+            print("Parse fails occured in snapshots from:", *timestamps)
