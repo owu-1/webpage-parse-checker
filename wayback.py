@@ -21,9 +21,18 @@ def wayback(sources, download_function):
             return
         source_cache_dir = f"{CACHE_LOCATION}/{source_name}"
         os.makedirs(source_cache_dir, exist_ok=True)
-        # search for unique snapshots
+
         snapshot_timestamps = set()
-        if snapshot_search_limit:
+        if snapshot_search_limit == 0:
+            # use cached snapshots
+            cache_file_names = os.listdir(source_cache_dir)
+            for cache_file_name in cache_file_names:
+                match = CACHE_REGEX.match(cache_file_name)
+                if match:
+                    timestamp = match[1]
+                    snapshot_timestamps.add(timestamp)
+        else:
+            # search for unique snapshots
             search_url = CDX_API_URL.format(url=url,
                                             limit=snapshot_search_limit)
             search_json = download_function(search_url)
@@ -41,13 +50,6 @@ def wayback(sources, download_function):
                 previous_digest = digest
             print("Found", len(snapshot_timestamps),
                   "unique snapshots for", source_name)
-        else:
-            cache_file_names = os.listdir(source_cache_dir)
-            for cache_file_name in cache_file_names:
-                match = CACHE_REGEX.match(cache_file_name)
-                if match:
-                    timestamp = match[1]
-                    snapshot_timestamps.add(timestamp)
 
         # download, cache and test snapshots
         parse_fail_timestamps[source_name] = []
