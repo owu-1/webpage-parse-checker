@@ -25,7 +25,7 @@ The snapshot search limit controls the amount of snapshots searched for with the
 
 Set the snapshot search limit to 0 to skip the snapshot search and use only cached web-pages
 
-parse_function expects a function that takes html as its only parameter
+parse_function expects a function that takes html as its only parameter and returns True on a successful parse or False on a failed parse
 
 <b>download_function</b> expects a function that takes a url as its only parameter and returns html
 
