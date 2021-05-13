@@ -8,12 +8,15 @@
 #   # print parsed infomation, print errors
 
 # URL = "https://www.google.com/"
-# wayback(URL, download, parse, 5)
+# wayback(URL, download, parse, 5, hide_snapshot_url_on_success=True)
 
 
-def wayback(url, download_function, parse_function, amount_of_snapshots=10):
+def wayback(url, download_function, parse_function, amount_of_snapshots=10,
+            hide_snapshot_url_on_success=False):
     # Expects download function to take one parameter (url) and return HTML
-    # in a format that the parse function handles
+    # in a format that the parse function handles,
+    # and the parse function to return True for a correct parse
+    # and return False for an incorrect parse
     #
     # Amount of snapshots is the amount of snapshots to test before stopping
     #
@@ -63,12 +66,25 @@ def wayback(url, download_function, parse_function, amount_of_snapshots=10):
             # Page returned is "rendered exactly as it was archived"
             # https://webapps.stackexchange.com/a/40912
             print(f"Found snapshot at {snapshot_datetime}. Downloading...")
+            if not hide_snapshot_url_on_success:
+                print("Snapshot link:",
+                      "http://web.archive.org/web/{}/{}".format(
+                          snapshot_timestamp, url))
             # todo: cache downloaded pages.
             #       warning - might be similar to export functionality?
             snapshot_html = download_function(
                 f"http://web.archive.org/web/{snapshot_timestamp}id_/{url}")
             # todo: expect and handle parse function's dictonary or bool return
-            parse_function(snapshot_html)
+            parse_result = parse_function(snapshot_html)
+            if parse_result:
+                print("Parse was successful!")
+            else:
+                if hide_snapshot_url_on_success:
+                    print("Parse failed. Snapshot link:",
+                          "http://web.archive.org/web/{}/{}".format(
+                              snapshot_timestamp, url))
+                else:
+                    print("Parse failed")
 
             previous_snapshot_datetime = snapshot_datetime
             search_snapshot_datetime = snapshot_datetime - SEARCH_TIME_GAP
