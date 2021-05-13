@@ -5,8 +5,7 @@ Generate robust parsing code for webpages
 
 <b>Warning - Remember to remove the function and the snapshot_cache folder for submission</b>
 ## How to use
-Copy and paste the wayback function into your solution, then call the function with source infomation and your download function
-
+Copy and paste the wayback function into your solution, then call the function with source infomation and your download function. Importing the function from a file is not suggested (if you forget to remove the import in the submission, no one is gonna be happy)
 ```python
 def wayback(sources, download_function):
 ```
