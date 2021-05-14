@@ -13,6 +13,7 @@ def wayback(sources, download_function):
                    "output=json&"  # return in json form
                    "fl=timestamp&"  # only return timestamps
                    "collapse=digest&"  # only show unique captures
+                   "filter=statuscode:200&"  # only return pages without errors
                    "url={url}&"
                    "from={requested_date}&"
                    "to={current_date}")
