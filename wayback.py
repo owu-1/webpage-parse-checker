@@ -3,10 +3,12 @@ def wayback(sources, download_function):
     from datetime import datetime, timedelta
     import os
     import re
+    from pprint import pprint
 
     CACHE_LOCATION = "snapshot_cache"
     CACHE_REGEX = re.compile(r"^(\d{14})\.html$")
     SETTINGS_LOCATION = f"{CACHE_LOCATION}/settings.json"
+    PARSE_RESULTS_LOCATION = f"{CACHE_LOCATION}/parse_results.json"
     CACHE_TIME = timedelta(hours=1)
     TIMESTAMP_FORMAT = "%Y%m%d%H%M%S"
     CDX_API_URL = ("http://web.archive.org/cdx/search/cdx?"
@@ -19,6 +21,7 @@ def wayback(sources, download_function):
                    "to={current_date}")
     SNAPSHOT_URL = "http://web.archive.org/web/{timestamp}id_/{url}"
 
+    # open settings file
     if os.path.isfile(SETTINGS_LOCATION):
         with open(SETTINGS_LOCATION) as f:
             settings = json.load(f)
@@ -28,10 +31,17 @@ def wayback(sources, download_function):
                 settings[source_name] = {}
     else:
         settings = {source_name: {} for source_name in sources}
+    # open previous parse results file
+    if os.path.isfile(PARSE_RESULTS_LOCATION):
+        with open(PARSE_RESULTS_LOCATION) as f:
+            previous_parse_results = json.load(f)
+    else:
+        previous_parse_results = None
 
     current_date = datetime.now()
     current_date_str = current_date.strftime(TIMESTAMP_FORMAT)
     parse_fail_timestamps = {}
+    parse_results = {}
     for source_name, source_data in sources.items():
         url = source_data["url"]
         date_filter = source_data["date_filter"]
@@ -75,6 +85,23 @@ def wayback(sources, download_function):
                 timestamps.add(timestamp)
             print("Found", len(timestamps),
                   "unique snapshots for", source_name)
+
+            # download and cache snapshots
+            for timestamp in timestamps:
+                snapshot_location = f"{source_cache_dir}/{timestamp}.html"
+                timestamp_readable = datetime.strptime(timestamp,
+                                                       TIMESTAMP_FORMAT)
+                if os.path.isfile(snapshot_location):
+                    continue
+                else:
+                    print("Downloading snapshot from", timestamp_readable)
+                    snapshot_url = SNAPSHOT_URL.format(
+                        timestamp=timestamp,
+                        url=url)
+                    snapshot_html = download_function(snapshot_url)
+                    # cache snapshot
+                    with open(snapshot_location, 'w') as f:
+                        f.write(snapshot_html)
         else:
             # use cached snapshots
             cache_file_names = os.listdir(source_cache_dir)
@@ -86,38 +113,50 @@ def wayback(sources, download_function):
             print("Found", len(timestamps),
                   "snapshots cached for", source_name)
 
-        # download, cache and test snapshots
+        # test snapshots
+        source_parse_results = {}
+        if previous_parse_results:
+            previous_source_parse_results = previous_parse_results[source_name]
         parse_fail_timestamps[source_name] = []
         fails = parse_fail_timestamps[source_name]
         for timestamp in timestamps:
             snapshot_location = f"{source_cache_dir}/{timestamp}.html"
-            timestamp_readable = datetime.strptime(timestamp, TIMESTAMP_FORMAT)
-            if os.path.isfile(snapshot_location):
-                print("Using cached snapshot from", timestamp_readable)
-                with open(snapshot_location) as f:
-                    snapshot_html = f.read()
-            else:
-                print("Downloading snapshot from", timestamp_readable)
-                snapshot_url = SNAPSHOT_URL.format(
-                    timestamp=timestamp,
-                    url=url)
-                snapshot_html = download_function(snapshot_url)
-                # cache snapshot
-                with open(snapshot_location, 'w') as f:
-                    f.write(snapshot_html)
-            # test snapshot
+            with open(snapshot_location) as f:
+                snapshot_html = f.read()
             parse_result = source_data["parse_function"](snapshot_html)
             if parse_result:
                 print("Parsed successfully!")
+                if isinstance(parse_result, dict):
+                    source_parse_results[timestamp] = parse_result
+                    if previous_parse_results:
+                        previous_parse_result = \
+                            previous_source_parse_results.get(timestamp)
+                        if (previous_parse_result and
+                                not parse_result == previous_parse_result):
+                            print("Parse result is different "
+                                  "from previous result for", timestamp)
+                            print("Previous:")
+                            pprint(previous_parse_result)
+                            print("Current:")
+                            pprint(parse_result)
+                else:
+                    source_parse_results[timestamp] = None
             else:
                 print("Parse failed.")
                 fails.append(timestamp)
+
+        # update parse results
+        parse_results[source_name] = source_parse_results
 
         # update date filter setting
         if search:
             settings[source_name]["date_filter"] = requested_date_str
             with open(SETTINGS_LOCATION, 'w') as f:
                 json.dump(settings, f)
+
+    # save parse results
+    with open(PARSE_RESULTS_LOCATION, 'w') as f:
+        json.dump(parse_results, f)
 
     # failed parses overview
     for source_name, timestamps in parse_fail_timestamps.items():
