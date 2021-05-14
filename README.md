@@ -19,7 +19,7 @@ def wayback(sources, download_function):
                            # or a string describing date in form of yyyyMMddhhmmss
 
         "parse_function": parse_function  # expects a function that takes html as its only parameter
-                                          # and returns True on a successful parse
+                                          # and returns True or a dictonary of parsed data on a successful parse
                                           # or False on a failed parse
     },
     # ...
@@ -38,7 +38,7 @@ def nine_news_parse(html):
     # parse logic
     # print parsed infomation, print errors
     if parse_success:
-        return True
+        return True  # or return { "headline": headline, ... }
     else:
         return False
 
