@@ -46,7 +46,7 @@ def wayback(sources, download_function):
                 oldest_date_filter = datetime.strptime(oldest_date_filter_str,
                                                        TIMESTAMP_FORMAT)
                 downloaded_date = datetime.strptime(downloaded_date_str,
-                                                    TIMESTAMP_FORMAT)  # 20210514231754
+                                                    TIMESTAMP_FORMAT)
                 cache_contains_snapshots = \
                     oldest_date_filter <= self.date_filter
                 cache_is_outdated = \
@@ -107,7 +107,7 @@ def wayback(sources, download_function):
             if all_previous_results:
                 previous_results = all_previous_results[self.name]
             else:
-                previous_results = None
+                previous_results = {}
 
             results = {}
             fails = []
@@ -118,23 +118,18 @@ def wayback(sources, download_function):
                     snapshot_html = f.read()
                 result = source_data["parse_function"](snapshot_html)
                 if result:
-                    print("Parsed successfully!")
+                    # successful parse
                     if isinstance(result, dict):
                         results[timestamp] = result
                         # don't check if previously failed
                         previous_result = previous_results.get(timestamp)
                         if (previous_result and
                                 not result == previous_result):
-                            change = {
-                                "timestamp": timestamp,
-                                "previous": previous_result,
-                                "current": result
-                            }
-                            changes.append(change)
+                            changes.append(timestamp)
                     else:
                         results[timestamp] = None
                 else:
-                    print("Parse failed.")
+                    # failed parse
                     fails.append(timestamp)
             return (results, fails, changes)
 
@@ -151,9 +146,9 @@ def wayback(sources, download_function):
     # open previous parse results file
     if os.path.isfile(PARSE_RESULTS_LOCATION):
         with open(PARSE_RESULTS_LOCATION) as f:
-            previous_results = json.load(f)
+            all_previous_results = json.load(f)
     else:
-        previous_results = {}
+        all_previous_results = None
 
     current_date = datetime.now()
     all_results = {}
@@ -163,7 +158,7 @@ def wayback(sources, download_function):
         source = Source(source_name, source_data, current_date)
         timestamps = source.download_snapshots(settings, current_date)
         results, fails, changes = source.parse_snapshots(timestamps,
-                                                         previous_results)
+                                                         all_previous_results)
         all_results[source_name] = results
         all_fails[source_name] = fails
         all_changes[source_name] = changes
@@ -176,10 +171,6 @@ def wayback(sources, download_function):
     with open(PARSE_RESULTS_LOCATION, 'w') as f:
         json.dump(all_results, f)
 
-    # save changes
-    with open(CHANGES_LOCATION, 'w') as f:
-        json.dump(all_changes, f)
-
     # overviews
     for source_name in sources:
         fails = all_fails[source_name]
@@ -187,7 +178,7 @@ def wayback(sources, download_function):
         print(source_name, "had", len(fails), "parse fails")
         if fails:
             print("Parse fails occured in snapshots from:", *fails)
-        print(source_name, "had", len(changes),
-              "different results to previous results")
         if changes:
-            print("See changes in", CHANGES_LOCATION)
+            print(source_name, "had", len(changes),
+                  "different results to previous results")
+            print("Changes occured in snapshots from", *changes)
