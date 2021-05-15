@@ -4,10 +4,14 @@ Generate robust parsing code for webpages
 <b>Warning - A directory named snapshot_cache will be created in the current directory</b>
 
 <b>Warning - Remember to remove the function and the snapshot_cache folder for submission</b>
+
+This code will test your parse logic against previous versions of a web-page. It also supports warning and displaying to users what parsed data has changed from the previous attempt, and cycling through and displaying on the GUI the changed parsed data 
+
 ## How to use
-Copy and paste the wayback function into your solution, then call the function with source infomation and your download function. Importing the function from a file is not suggested (if you forget to remove the import in the submission, no one's gonna be happy)
+Copy and paste the wayback code into your solution, then call the parse_check function with source infomation and your download function. Importing the code from a file is not suggested (if you forget to remove the import in the submission, no one's gonna be happy)
 ```python
-def wayback(sources, download_function):
+# Under the class Wayback
+def parse_check(sources, download_function):
 ```
 
 <b>sources</b> expects a dictonary containing source infomation in this format:
@@ -29,6 +33,7 @@ If parse_function returns a dictonary of parsed data, the data will be saved in 
 
 <b>download_function</b> expects a function that takes a url as its only parameter and returns html
 
+<b>parse_check</b> returns a Wayback object which contains parsed data and timestamps where results were different from before. Use its set_gui_display_function method to set a function which will edit the gui based on parsed data. Use the toggle method to execute the supplied gui edit function with parsed data as its only parameter.
 
 ## Example
 ```python
@@ -69,5 +74,14 @@ SOURCES = {
     }
 }
 
-wayback(SOURCES, download)
+# Without displaying data on GUI
+Wayback.parse_check(SOURCES, download)
+
+# With displaying data on GUI
+def change_gui(parsed_data):
+    headline_label["text"] = parsed_data["headline"]
+    # ...
+wayback = Wayback.parse_check(SOURCES, download)
+wayback.set_gui_display_function(change_gui)
+button["command"] = wayback.toggle  # bind the wayback object's toggle method to button
 ```
