@@ -46,9 +46,12 @@ def wayback(sources, download_function):
                 oldest_date_filter = datetime.strptime(oldest_date_filter_str,
                                                        TIMESTAMP_FORMAT)
                 downloaded_date = datetime.strptime(downloaded_date_str,
-                                                    TIMESTAMP_FORMAT)
-                if (oldest_date_filter <= self.date_filter or
-                        (current_date - downloaded_date) > CACHE_TIME):
+                                                    TIMESTAMP_FORMAT)  # 20210514231754
+                cache_contains_snapshots = \
+                    oldest_date_filter <= self.date_filter
+                cache_is_outdated = \
+                    (current_date - downloaded_date) > CACHE_TIME
+                if cache_contains_snapshots and not cache_is_outdated:
                     # use cached snapshots
                     cache_file_names = os.listdir(self.cache_dir)
                     timestamps = []
@@ -118,16 +121,16 @@ def wayback(sources, download_function):
                     print("Parsed successfully!")
                     if isinstance(result, dict):
                         results[timestamp] = result
-                        if previous_results:
-                            previous_result = previous_results.get(timestamp)
-                            if (previous_result and
-                                    not result == previous_result):
-                                change = {
-                                    "timestamp": timestamp,
-                                    "previous": previous_result,
-                                    "current": result
-                                }
-                                changes.append(change)
+                        # don't check if previously failed
+                        previous_result = previous_results.get(timestamp)
+                        if (previous_result and
+                                not result == previous_result):
+                            change = {
+                                "timestamp": timestamp,
+                                "previous": previous_result,
+                                "current": result
+                            }
+                            changes.append(change)
                     else:
                         results[timestamp] = None
                 else:
@@ -150,7 +153,7 @@ def wayback(sources, download_function):
         with open(PARSE_RESULTS_LOCATION) as f:
             previous_results = json.load(f)
     else:
-        previous_results = None
+        previous_results = {}
 
     current_date = datetime.now()
     all_results = {}
