@@ -5,7 +5,7 @@ Generate robust parsing code for webpages
 
 <b>Warning - Remember to remove the function and the snapshot_cache folder for submission</b>
 ## How to use
-Copy and paste the wayback function into your solution, then call the function with source infomation and your download function. Importing the function from a file is not suggested (if you forget to remove the import in the submission, no one is gonna be happy)
+Copy and paste the wayback function into your solution, then call the function with source infomation and your download function. Importing the function from a file is not suggested (if you forget to remove the import in the submission, no one's gonna be happy)
 ```python
 def wayback(sources, download_function):
 ```
@@ -25,6 +25,8 @@ def wayback(sources, download_function):
     # ...
 }
 ```
+If parse_function returns a dictonary of parsed data, the data will be saved in snapshot_cache/parse_results.json. This enables result comparison which warns if different results were found compared to the previous results. Result diff can be viewed using http://www.jsondiff.com/. Save the original parse_results.json file somewhere else as future runs will overwrite it
+
 <b>download_function</b> expects a function that takes a url as its only parameter and returns html
 
 
