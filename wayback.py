@@ -30,12 +30,12 @@ class Wayback:
             with open(Wayback.PARSE_RESULTS_LOCATION) as f:
                 all_previous_results = json.load(f)
         else:
-            all_previous_results = None
+            all_previous_results = {}
 
         current_date = datetime.now()
         all_results = {}
         all_fails = {}
-        all_changes = Changes()
+        all_changes = []
         for source_name, source_data in sources.items():
             source = Source(source_name, source_data, current_date)
             timestamps = source.download_snapshots(
@@ -58,16 +58,16 @@ class Wayback:
         # overviews
         for source_name in sources:
             fails = all_fails[source_name]
-            changes = all_changes[source_name]
             print("-----", source_name, "-----")
             print(source_name, "had", len(fails), "parse fails")
             if fails:
                 print("Parse fails occured in snapshots from:", *fails)
-            if len(changes):
-                print(source_name, "had", len(changes),
-                      "different results to previous results")
-                print("Changes occured in snapshots from",
-                      *changes)
+        if len(all_changes):
+            for change in all_changes:
+                source_name = change[0]
+                timestamp = change[1]
+                print(source_name, "at timestamp", timestamp,
+                      "parse data changed")
 
         return Wayback(all_results, all_changes)
 
@@ -79,7 +79,6 @@ class Wayback:
     def toggle(self):
         try:
             change = next(self.changes)
-            # todo: abstract this
             source_name = change[0]
             timestamp = change[1]
         except StopIteration:
@@ -88,28 +87,6 @@ class Wayback:
         print("Showing change for", source_name, "at", timestamp)
         change_result = self.results[source_name][timestamp]
         self.gui_function(change_result)
-
-
-class Changes:
-    def __init__(self, changes=[]):
-        self.changes = changes
-
-    def __add__(self, other):
-        return Changes(self.changes + other.changes)
-
-    def __getitem__(self, source_name):
-        source_changes = []
-        for change in self.changes:
-            if change[0] == source_name:
-                source_changes.append(change[1])
-        return source_changes
-
-    def __iter__(self):
-        return iter(self.changes)
-
-    def append(self, source_name, timestamp):
-        change = [source_name, timestamp]
-        self.changes.append(change)
 
 
 class Source:
@@ -212,17 +189,16 @@ class Source:
         return timestamps
 
     def parse_snapshots(self, timestamps, all_previous_results):
-        if all_previous_results:
-            previous_results = all_previous_results[self.name]
-        else:
+        previous_results = all_previous_results.get(self.name)
+        if not previous_results:
             previous_results = {}
 
         results = {}
         fails = []
-        changes = Changes()
+        changes = []
         for timestamp in timestamps:
             snapshot_location = f"{self.cache_dir}/{timestamp}.html"
-            with open(snapshot_location) as f:
+            with open(snapshot_location, encoding="utf-8") as f:
                 snapshot_html = f.read()
             result = self.parse_function(snapshot_html)
             if result:
@@ -232,7 +208,8 @@ class Source:
                     # don't check if previously failed
                     previous_result = previous_results.get(timestamp)
                     if (result != previous_result):
-                        changes.append(self.name, timestamp)
+                        change = [self.name, timestamp]
+                        changes.append(change)
                 else:
                     results[timestamp] = None
             else:
