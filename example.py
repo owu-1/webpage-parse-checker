@@ -1,10 +1,7 @@
 from tkinter import *
 # Application sets up my tkinter window
 from solution import Application, download  # import my download function
-
-# ---------------------------------- WAYBACK ----------------------------------
-# ...
-# -------------------------------- WAYBACK END --------------------------------
+from wayback import Wayback  # file named wayback.py contains wayback code
 
 # Capture the first promo on the 'carousel' from the QUT website
 
