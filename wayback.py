@@ -205,7 +205,6 @@ class Source:
                 # successful parse
                 if isinstance(result, dict):
                     results[timestamp] = result
-                    # don't check if previously failed
                     previous_result = previous_results.get(timestamp)
                     if (result != previous_result):
                         change = [self.name, timestamp]
