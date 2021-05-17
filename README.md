@@ -1,11 +1,11 @@
 # webpage-parse-checker
 Generate robust parsing code for webpages
 
-<b>Warning - A directory named snapshot_cache will be created in the current directory</b>
-
 <b>Warning - Remember to remove the code and the snapshot_cache folder for submission</b>
 
-This code will test your parse logic against previous versions of a web-page. It also supports warning and displaying to users what parsed data has changed from the previous attempt, and cycling through and displaying on the GUI the changed parsed data 
+This code will test your parse logic against previous versions of a web-page. It also supports warning and displaying to users what parsed data has changed from the previous attempt, and cycling through and displaying on the GUI the changed parsed data
+
+Note: A directory named snapshot_cache will be created in the current directory
 
 ## How to use
 Either copy and paste the code into your own file, or import Wayback from a file. Importing is better imo
