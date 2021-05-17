@@ -3,12 +3,12 @@ Generate robust parsing code for webpages
 
 <b>Warning - A directory named snapshot_cache will be created in the current directory</b>
 
-<b>Warning - Remember to remove the function and the snapshot_cache folder for submission</b>
+<b>Warning - Remember to remove the code and the snapshot_cache folder for submission</b>
 
 This code will test your parse logic against previous versions of a web-page. It also supports warning and displaying to users what parsed data has changed from the previous attempt, and cycling through and displaying on the GUI the changed parsed data 
 
 ## How to use
-Copy and paste the wayback code into your solution, then call the parse_check function with source infomation and your download function. Importing the code from a file is not suggested (if you forget to remove the import in the submission, no one's gonna be happy)
+Either copy and paste the code into your own file, or import Wayback from a file. Importing is better imo
 ```python
 # Under the class Wayback
 def parse_check(sources, download_function):
