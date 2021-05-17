@@ -1,5 +1,3 @@
-# ---------------------------------- WAYBACK ----------------------------------
-
 import json
 from datetime import datetime, timedelta
 import os
@@ -205,7 +203,7 @@ class Source:
                     url=self.url)
                 snapshot_html = download_function(snapshot_url)
                 # cache snapshot
-                with open(snapshot_location, 'w') as f:
+                with open(snapshot_location, 'w', encoding="utf-8") as f:
                     f.write(snapshot_html)
         settings[self.name]["date_filter"] = \
             self.date_filter.strftime(self.TIMESTAMP_FORMAT)
@@ -241,5 +239,3 @@ class Source:
                 # failed parse
                 fails.append(timestamp)
         return (results, fails, changes)
-
-# -------------------------------- WAYBACK END --------------------------------
